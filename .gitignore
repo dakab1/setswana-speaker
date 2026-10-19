@@ -1,0 +1,17 @@
+# Local config (copy .env.example to .env)
+.env
+
+# Python
+.venv/
+__pycache__/
+
+# Pula model weights (4.9 GB) - see README for the download
+models/
+
+# Personal translation history
+data/
+
+# Generated files
+output/
+icon.png
+.DS_Store
