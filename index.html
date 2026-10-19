@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Setswana Speaker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Young+Serif&display=swap" rel="stylesheet">
+<style>
+  /* Palette from the Botswana flag: pula (rain) blue, black, white. */
+  :root {
+    --paper: #f3f8fc; --ink: #0f1e2b; --muted: #5b6b78; --line: #d3e2ee;
+    --pula: #6da9d8; --deep: #1e5d93; --on-deep: #ffffff; --field: #ffffff; --error: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0d1822; --ink: #e8f1f8; --muted: #93a4b2; --line: #22384a;
+      --pula: #6da9d8; --deep: #8ec3ec; --on-deep: #0d1822; --field: #12212e; --error: #f2b8b5;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 1rem/1.55 "Hanken Grotesk", system-ui, sans-serif; }
+  .band { height: 22px; background: linear-gradient(var(--pula) 0 8px, #fff 8px 10px, #000 10px 14px, #fff 14px 16px, var(--pula) 16px); }
+  main { max-width: 760px; margin: 0 auto; padding: 28px 16px 64px; }
+  header { font-weight: 600; font-size: 1rem; color: var(--muted); margin-bottom: 40px; }
+
+  #stage {
+    font: 400 clamp(2.4rem, 7vw, 4.75rem)/1.12 "Young Serif", Georgia, serif;
+    letter-spacing: -0.01em; margin: 0 0 40px; min-height: 2.3em; overflow-wrap: anywhere;
+  }
+  #stage .w { transition: color .15s, text-decoration-color .15s; text-decoration: underline 0.08em transparent; text-underline-offset: 0.14em; }
+  #stage.playing .w { color: var(--line); }
+  #stage.playing .w.said { color: var(--ink); }
+  #stage.playing .w.now { color: var(--ink); text-decoration-color: var(--pula); }
+  #stage .empty { color: var(--line); }
+
+  label { display: block; font-weight: 600; margin-bottom: 6px; }
+  textarea, input[type=text], select {
+    width: 100%; font: inherit; color: inherit; background: var(--field);
+    border: 1.5px solid var(--line); border-radius: 6px; padding: 12px 14px;
+  }
+  textarea { min-height: 96px; resize: vertical; }
+  :focus-visible { outline: 3px solid var(--pula); outline-offset: 2px; }
+  textarea:focus, input[type=text]:focus, select:focus { border-color: var(--deep); outline: none; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: end; margin: 16px 0 24px; }
+  .controls > div { flex: 1 1 160px; }
+  input[type=range] { width: 100%; accent-color: var(--deep); }
+  .speed-value { font-weight: 400; color: var(--muted); }
+
+  button {
+    font: 600 1rem "Hanken Grotesk", sans-serif; color: var(--on-deep); background: var(--deep);
+    border: 0; border-radius: 6px; padding: 13px 26px; cursor: pointer;
+  }
+  button:disabled { opacity: .55; cursor: progress; }
+  .secondary { background: transparent; color: var(--deep); border: 1.5px solid var(--deep); }
+
+  .error { color: var(--error); min-height: 1.55em; margin: 10px 0 0; }
+
+  section { margin-top: 48px; padding-top: 28px; border-top: 1.5px solid var(--line); }
+  .row { display: flex; gap: 10px; }
+  .row input { flex: 1; }
+  .note { color: var(--muted); font-size: .9rem; margin: 10px 0 0; max-width: 60ch; }
+  /* Word-by-word: an interlinear gloss, Setswana over its English meaning. */
+  #translation { margin: -16px 0 40px; }
+  .translation-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .source { margin: 0; color: var(--muted); }
+  .gloss { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 4px; }
+  .gloss button {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
+    background: transparent; color: var(--ink); border: 0; border-bottom: 2px solid var(--line);
+    border-radius: 0; padding: 4px 10px 6px 2px; font-weight: 400;
+  }
+  .gloss button:hover { border-bottom-color: var(--pula); }
+  .gloss .tn { font: 400 1.35rem/1.2 "Young Serif", Georgia, serif; }
+  .gloss .en { font-size: .85rem; color: var(--muted); min-height: 1.3em; }
+  .hint { color: var(--muted); font-size: .85rem; margin: 12px 0 0; max-width: 60ch; }
+
+  .star {
+    background: transparent; color: var(--muted); border: 1.5px solid var(--line); border-radius: 6px;
+    padding: 6px 12px; font-size: .95rem; font-weight: 500; white-space: nowrap;
+  }
+  .star[aria-pressed="true"] { color: var(--ink); border-color: var(--pula); background: color-mix(in srgb, var(--pula) 22%, transparent); }
+
+  /* History */
+  .history-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  h2 { font-size: 1rem; font-weight: 600; margin: 0; }
+  .tabs { display: flex; gap: 2px; padding: 3px; border-radius: 8px; background: var(--line); }
+  .tabs button { background: transparent; color: var(--muted); padding: 6px 14px; border-radius: 6px; font-weight: 500; width: auto; }
+  .tabs button[aria-selected="true"] { background: var(--paper); color: var(--ink); }
+  .history { list-style: none; margin: 0; padding: 0; }
+  .history li { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); }
+  .history .open {
+    flex: 1; min-width: 0; text-align: left; background: transparent; color: var(--ink);
+    padding: 14px 0; border-radius: 0; font-weight: 400;
+  }
+  .history .tn { display: block; font: 400 1.15rem/1.3 "Young Serif", Georgia, serif; overflow-wrap: anywhere; }
+  .history .en { display: block; color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
+  .history .star { padding: 6px 10px; }
+
+  @media (max-width: 480px) {
+    .row { flex-direction: column; }
+    button { width: 100%; }
+    .gloss button, .star, .history .open, .tabs button { width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { #stage .w { transition: none; } }
+</style>
+</head>
+<body>
+<div class="band" aria-hidden="true"></div>
+<main>
+  <header>Setswana Speaker</header>
+
+  <p id="stage" aria-live="polite"></p>
+
+  <div id="translation" hidden>
+    <div class="translation-head">
+      <p class="source">From “<span id="source"></span>”</p>
+      <button id="star" class="star" aria-pressed="false">☆ Favourite</button>
+    </div>
+    <ol id="gloss" class="gloss" aria-label="Word by word"></ol>
+    <p class="hint">Tap a word to hear it on its own. Meanings come from Pula and can be wrong, especially for small grammar words.</p>
+  </div>
+
+  <label for="text">Setswana text</label>
+  <textarea id="text" maxlength="500">Bathong ba Modimo</textarea>
+
+  <div class="controls">
+    <div>
+      <label for="voice">Voice</label>
+      <select id="voice">
+        <option value="themba">Themba</option>
+        <option value="thando">Thando</option>
+      </select>
+    </div>
+    <div>
+      <label for="rate">Speed <span class="speed-value" id="rate-value">-15%</span></label>
+      <input id="rate" type="range" min="-50" max="20" step="5" value="-15">
+    </div>
+    <button id="speak">Speak</button>
+  </div>
+  <p class="error" id="speak-error" role="alert"></p>
+
+  <section>
+    <label for="english">Translate from English</label>
+    <div class="row">
+      <input id="english" type="text" maxlength="500" placeholder="Good morning, how are you?">
+      <button id="translate" class="secondary">Translate</button>
+    </div>
+    <p class="error" id="translate-error" role="alert"></p>
+    <p class="note">Pula, an open Setswana language model running on this Mac, writes the translation into the Setswana box. It can be wrong, so check anything important with a Setswana speaker. The voice is isiZulu, so tones are approximate.</p>
+  </section>
+
+  <section aria-labelledby="history-title">
+    <div class="history-head">
+      <h2 id="history-title">Your translations</h2>
+      <div class="tabs" role="tablist" aria-label="Show">
+        <button role="tab" aria-selected="true" data-filter="recent">Recent</button>
+        <button role="tab" aria-selected="false" data-filter="favourites">Favourites</button>
+      </div>
+    </div>
+    <ul id="history" class="history"></ul>
+    <p id="history-empty" class="note"></p>
+  </section>
+</main>
+
+<audio id="audio"></audio>
+<script>
+const $ = id => document.getElementById(id);
+const stage = $("stage"), text = $("text"), audio = $("audio");
+let words = [], spans = [];
+let entries = [], current = null, filter = "recent";
+
+function renderStage() {
+  const value = text.value.trim();
+  stage.classList.remove("playing");
+  stage.replaceChildren();
+  spans = [];
+  if (!value) {
+    stage.innerHTML = '<span class="empty">Type something to hear it</span>';
+    return;
+  }
+  value.split(/(\s+)/).forEach(part => {
+    if (/^\s+$/.test(part)) return stage.append(" ");
+    const s = document.createElement("span");
+    s.className = "w"; s.textContent = part;
+    stage.append(s); spans.push(s);
+  });
+}
+
+function starLabel(entry) { return entry.favourite ? "★ Favourite" : "☆ Favourite"; }
+
+// The word-by-word breakdown belongs to a translation, so it hides once the Setswana text is edited.
+function renderTranslation() {
+  const show = current && text.value.trim() === current.setswana;
+  $("translation").hidden = !show;
+  if (!show) return;
+  $("source").textContent = current.english;
+  $("star").textContent = starLabel(current);
+  $("star").setAttribute("aria-pressed", current.favourite);
+  $("gloss").replaceChildren(...current.words.map(w => {
+    const li = document.createElement("li"), b = document.createElement("button");
+    b.innerHTML = '<span class="tn"></span><span class="en"></span>';
+    b.querySelector(".tn").textContent = w.setswana;
+    b.querySelector(".en").textContent = w.english || "?";
+    b.setAttribute("aria-label", `${w.setswana}: ${w.english || "meaning unknown"}. Play`);
+    b.onclick = () => playOnly(w.setswana);
+    li.append(b);
+    return li;
+  }));
+}
+
+function renderHistory() {
+  const shown = filter === "favourites" ? entries.filter(e => e.favourite) : entries;
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.filter === filter));
+  $("history").replaceChildren(...shown.map(entry => {
+    const li = document.createElement("li"), open = document.createElement("button"), star = document.createElement("button");
+    open.className = "open";
+    open.innerHTML = '<span class="tn"></span><span class="en"></span>';
+    open.querySelector(".tn").textContent = entry.setswana;
+    open.querySelector(".en").textContent = entry.english;
+    open.onclick = () => { showEntry(entry); window.scrollTo({ top: 0, behavior: "smooth" }); };
+    star.className = "star";
+    star.textContent = entry.favourite ? "★" : "☆";
+    star.setAttribute("aria-pressed", entry.favourite);
+    star.setAttribute("aria-label", entry.favourite ? "Remove from favourites" : "Add to favourites");
+    star.onclick = () => toggleFavourite(entry);
+    li.append(open, star);
+    return li;
+  }));
+  $("history-empty").textContent = shown.length ? "" :
+    filter === "favourites" ? "Star a translation to keep it here." : "Translations you make appear here.";
+}
+
+function showEntry(entry) {
+  current = entry;
+  text.value = entry.setswana;
+  $("english").value = entry.english;
+  renderStage();
+  renderTranslation();
+}
+
+function track() {
+  if (audio.paused) return;
+  const t = audio.currentTime;
+  spans.forEach((s, i) => {
+    const w = words[i];
+    s.classList.toggle("now", !!w && t >= w.start && t < w.end);
+    s.classList.toggle("said", !!w && t >= w.start);
+  });
+  requestAnimationFrame(track);
+}
+
+async function request(path, body) {
+  const r = body === undefined ? await fetch(path)
+    : await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function speech(value) {
+  return request("/speak", { text: value, voice: $("voice").value, rate: +$("rate").value });
+}
+
+async function speak() {
+  $("speak-error").textContent = "";
+  $("speak").disabled = true; $("speak").textContent = "Preparing…";
+  try {
+    const res = await speech(text.value);
+    words = res.words;
+    renderStage();
+    audio.src = "data:audio/mpeg;base64," + res.audio;
+    await audio.play();
+    stage.classList.add("playing");
+    requestAnimationFrame(track);
+  } catch (e) {
+    $("speak-error").textContent = e.message;
+  } finally {
+    $("speak").disabled = false; $("speak").textContent = "Speak";
+  }
+}
+
+async function playOnly(word) {
+  $("speak-error").textContent = "";
+  try {
+    audio.src = "data:audio/mpeg;base64," + (await speech(word)).audio;
+    await audio.play();
+  } catch (e) {
+    $("speak-error").textContent = e.message;
+  }
+}
+
+async function translate() {
+  const english = $("english").value.trim();
+  $("translate-error").textContent = "";
+  if (!english) { $("translate-error").textContent = "Type an English sentence to translate."; return; }
+  $("translate").disabled = true; $("translate").textContent = "Translating…";
+  try {
+    const entry = await request("/translate", { text: english });
+    entries.unshift(entry);
+    showEntry(entry);
+    renderHistory();
+  } catch (e) {
+    $("translate-error").textContent = e.message;
+  } finally {
+    $("translate").disabled = false; $("translate").textContent = "Translate";
+  }
+}
+
+async function toggleFavourite(entry) {
+  try {
+    const updated = await request("/favourite", { id: entry.id, favourite: !entry.favourite });
+    entries = entries.map(e => e.id === updated.id ? updated : e);
+    if (current && current.id === updated.id) current = updated;
+    renderTranslation();
+    renderHistory();
+  } catch (e) {
+    $("history-empty").textContent = e.message;
+  }
+}
+
+async function loadHistory() {
+  try {
+    entries = (await request("/history")).items;
+    renderHistory();
+  } catch (e) {
+    $("history-empty").textContent = "Couldn't load your history. Restart the app to try again.";
+  }
+}
+
+audio.onended = () => stage.classList.remove("playing");
+text.oninput = () => { renderStage(); renderTranslation(); };
+$("rate").oninput = e => $("rate-value").textContent = (e.target.value > 0 ? "+" : "") + e.target.value + "%";
+$("speak").onclick = speak;
+$("translate").onclick = translate;
+$("star").onclick = () => current && toggleFavourite(current);
+$("english").onkeydown = e => { if (e.key === "Enter") translate(); };
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => { filter = b.dataset.filter; renderHistory(); });
+renderStage();
+loadHistory();
+</script>
+</body>
+</html>
